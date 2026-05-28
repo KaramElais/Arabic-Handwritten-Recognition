@@ -23,6 +23,10 @@ OUTPUTS_DIR = PROJECT_ROOT / "outputs"
 
 MODEL_OUTPUT_DIR = OUTPUTS_DIR / "models"
 
+RESULTS_OUTPUT_DIR = OUTPUTS_DIR / "results"
+
+FIGURES_OUTPUT_DIR = OUTPUTS_DIR / "figures"
+
 
 # ============================================================
 # Dataset Settings

@@ -1,3 +1,4 @@
+import json
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -9,15 +10,20 @@ from config import (
     NUM_EPOCHS,
     EARLY_STOPPING_PATIENCE,
     MODEL_OUTPUT_DIR,
+    RESULTS_OUTPUT_DIR,
+    FIGURES_OUTPUT_DIR,
     BEST_MODEL_NAME,
 )
-
 from src.model import BaselineCNN
 from src.dataloader import create_dataloaders
 from src.validation.validate import validate_one_epoch
 from src.training.early_stopping import EarlyStopping
 
+MODEL_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+RESULTS_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+FIGURES_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 # ============================================================
 # Device Setup
 # ============================================================
@@ -255,3 +261,18 @@ print(
     f"Best model saved at: "
     f"{MODEL_OUTPUT_DIR / BEST_MODEL_NAME}"
 )
+
+# ============================================================
+# Save Training History
+# ============================================================
+
+history_save_path = RESULTS_OUTPUT_DIR / "training_history.json"
+
+with open(history_save_path, "w") as json_file:
+
+    json.dump(training_history, json_file, indent=4)
+
+print("=" * 60)
+print("Training history saved successfully.")
+print(f"History path: {history_save_path}")
+print("=" * 60)
