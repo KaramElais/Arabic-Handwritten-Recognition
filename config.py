@@ -104,7 +104,7 @@ DROPOUT_RATE = 0.5
 
 LEARNING_RATE = 0.001
 
-NUM_EPOCHS = 3
+NUM_EPOCHS = 30
 
 
 # ============================================================
@@ -123,7 +123,3 @@ MONITOR_METRIC = "val_loss"
 BEST_MODEL_NAME = "best_model.pth"
 
 CHECKPOINT_NAME = "checkpoint.pth"
-
-NUM_EPOCHS = 30
-
-EARLY_STOPPING_PATIENCE = 5
