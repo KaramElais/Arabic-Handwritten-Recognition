@@ -85,7 +85,7 @@ PIN_MEMORY = False
 # Model Settings
 # ============================================================
 
-MODEL_NAME = "BaselineCNN"
+MODEL_NAME = "ImprovedCNN"
 
 CONV1_OUT_CHANNELS = 32
 

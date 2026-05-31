@@ -12,18 +12,19 @@ from config import (
     MODEL_OUTPUT_DIR,
     RESULTS_OUTPUT_DIR,
     FIGURES_OUTPUT_DIR,
-    BEST_MODEL_NAME,
+    MODEL_NAME,
 )
-from src.model import BaselineCNN
+from src.model import BaselineCNN, ImprovedCNN
 from src.dataloader import create_dataloaders
 from src.validation.validate import validate_one_epoch
 from src.training.early_stopping import EarlyStopping
 
+
 MODEL_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
 RESULTS_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
 FIGURES_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+
 # ============================================================
 # Device Setup
 # ============================================================
@@ -54,7 +55,17 @@ train_loader, val_loader, test_loader = create_dataloaders()
 # Model Setup
 # ============================================================
 
-model = BaselineCNN().to(device)
+if MODEL_NAME == "BaselineCNN":
+    model = BaselineCNN().to(device)
+
+elif MODEL_NAME == "ImprovedCNN":
+    model = ImprovedCNN().to(device)
+
+else:
+    raise ValueError(
+        f"Unknown MODEL_NAME: {MODEL_NAME}. "
+        "Use 'BaselineCNN' or 'ImprovedCNN'."
+    )
 
 
 # ============================================================
@@ -67,48 +78,61 @@ optimizer = optim.Adam(
     model.parameters(),
     lr=LEARNING_RATE
 )
+
+
+# ============================================================
+# Early Stopping Setup
+# ============================================================
+
+best_model_save_path = MODEL_OUTPUT_DIR / f"{MODEL_NAME}_best_model.pth"
+
 early_stopping = EarlyStopping(
     patience=EARLY_STOPPING_PATIENCE,
-    save_path=MODEL_OUTPUT_DIR / BEST_MODEL_NAME
+    save_path=best_model_save_path
 )
 
 print("Early stopping initialized.")
-print(f"Best model will be saved to: {MODEL_OUTPUT_DIR / BEST_MODEL_NAME}")
+print(f"Selected model: {MODEL_NAME}")
+print(f"Best model will be saved to: {best_model_save_path}")
+
 
 # ============================================================
 # Training History
 # ============================================================
 
 training_history = {
+    "model_name": MODEL_NAME,
     "train_loss": [],
     "train_accuracy": [],
     "val_loss": [],
     "val_accuracy": []
 }
+
 best_train_accuracy = 0.0
+
 
 # ============================================================
 # Training Information
 # ============================================================
 
 print("=" * 60)
-print("Baseline CNN Training Started")
+print(f"{MODEL_NAME} Training Started")
 print("=" * 60)
 print(f"Epochs        : {NUM_EPOCHS}")
 print(f"Device        : {device}")
 print("=" * 60)
+
 
 # ============================================================
 # Training Loop
 # ============================================================
 
 for epoch in range(NUM_EPOCHS):
+
     model.train()
 
     running_loss = 0.0
-
     correct_predictions = 0
-
     total_samples = 0
 
     progress_bar = tqdm(
@@ -119,7 +143,6 @@ for epoch in range(NUM_EPOCHS):
     for images, labels in progress_bar:
 
         images = images.to(device)
-
         labels = labels.to(device)
 
         optimizer.zero_grad()
@@ -136,15 +159,11 @@ for epoch in range(NUM_EPOCHS):
 
         _, predicted = torch.max(outputs, 1)
 
-        correct_predictions += (
-            predicted == labels
-        ).sum().item()
+        correct_predictions += (predicted == labels).sum().item()
 
         total_samples += labels.size(0)
 
-        current_accuracy = (
-            100 * correct_predictions / total_samples
-        )
+        current_accuracy = 100 * correct_predictions / total_samples
 
         progress_bar.set_postfix({
             "Loss": f"{loss.item():.4f}",
@@ -153,12 +172,11 @@ for epoch in range(NUM_EPOCHS):
 
     epoch_loss = running_loss / len(train_loader)
 
-    epoch_accuracy = (
-        100 * correct_predictions / total_samples
-    )
+    epoch_accuracy = 100 * correct_predictions / total_samples
 
     if epoch_accuracy > best_train_accuracy:
-       best_train_accuracy = epoch_accuracy
+        best_train_accuracy = epoch_accuracy
+
 
     # ============================================================
     # Validation Phase
@@ -172,11 +190,8 @@ for epoch in range(NUM_EPOCHS):
     )
 
     training_history["train_loss"].append(epoch_loss)
-
     training_history["train_accuracy"].append(epoch_accuracy)
-
     training_history["val_loss"].append(val_loss)
-
     training_history["val_accuracy"].append(val_accuracy)
 
     early_stopping(
@@ -185,43 +200,14 @@ for epoch in range(NUM_EPOCHS):
         epoch=epoch + 1
     )
 
-    if early_stopping.early_stop:
-
-        print("\nEarly stopping activated.")
-
-        print(
-            f"Best model was saved at epoch "
-            f"{early_stopping.best_epoch}"
-    )
-
-        break
- 
-
-
+    print("-" * 60)
+    print(f"Epoch [{epoch + 1}/{NUM_EPOCHS}] Summary")
+    print(f"Training Loss       : {epoch_loss:.4f}")
+    print(f"Training Accuracy   : {epoch_accuracy:.2f}%")
+    print(f"Validation Loss     : {val_loss:.4f}")
+    print(f"Validation Accuracy : {val_accuracy:.2f}%")
     print("-" * 60)
 
-    print(
-        f"Epoch [{epoch + 1}/{NUM_EPOCHS}] Summary"
-    )
-
-    print(
-        f"Training Loss    : {epoch_loss:.4f}"
-    )
-
-    print(
-        f"Training Accuracy: {epoch_accuracy:.2f}%"
-    )
-
-    print(
-        f"Validation Loss  : {val_loss:.4f}"
-    )
-
-    print(
-        f"Validation Accuracy: {val_accuracy:.2f}%"
-    )
-
-    print("-" * 60)
-    print()
 
     # ============================================================
     # Training Behavior Analysis
@@ -239,6 +225,23 @@ for epoch in range(NUM_EPOCHS):
     else:
         print("Training and validation behavior looks stable.")
 
+    print()
+
+    if early_stopping.early_stop:
+
+        print("\nEarly stopping activated.")
+
+        print(
+            f"Best model was saved at epoch "
+            f"{early_stopping.best_epoch}"
+        )
+
+        break
+
+
+# ============================================================
+# Final Training Summary
+# ============================================================
 
 print(
     f"\nBest Training Accuracy: "
@@ -246,30 +249,27 @@ print(
 )
 
 if early_stopping.early_stop:
-
     print("Training stopped before reaching maximum epochs.")
 
 else:
-
     print("Training completed all epochs.")
 
 print(f"Best validation loss: {early_stopping.best_loss:.4f}")
-
 print(f"Best epoch: {early_stopping.best_epoch}")
 
 print(
     f"Best model saved at: "
-    f"{MODEL_OUTPUT_DIR / BEST_MODEL_NAME}"
+    f"{best_model_save_path}"
 )
+
 
 # ============================================================
 # Save Training History
 # ============================================================
 
-history_save_path = RESULTS_OUTPUT_DIR / "training_history.json"
+history_save_path = RESULTS_OUTPUT_DIR / f"{MODEL_NAME}_training_history.json"
 
 with open(history_save_path, "w") as json_file:
-
     json.dump(training_history, json_file, indent=4)
 
 print("=" * 60)
